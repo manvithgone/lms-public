@@ -1,19 +1,21 @@
 pipeline {
-    agent any
+    agent {
+      label 'docker'
+    }
 
     environment {
 
-    DOCKERHUB_CREDENTIALS = credentials('dockerhub')
-     registry = "yellaiahdocker/kona"
+    DOCKERHUB_CREDENTIALS = credentials('dockerusermanvith')
+     registry = "manvithgone/frontend-lms"
         registryCredential = 'dockerhub'
-        dockerImage = ''
     }
 
     stages {
+        
 
         stage('Building the docker image') {
             steps {
-                sh 'cd webapp && docker build -t yellaiahdocker/kona .'
+                sh 'cd webapp && docker build -t manvithgone/frontend-lms .'
             }
         }
         stage('Logging into dockerhub account') {
@@ -23,21 +25,18 @@ pipeline {
         }
         stage('pushing the docker image into dockerhub') {
             steps {
-                  sh 'docker push yellaiahdocker/kona'
+                  sh 'docker push manvithgone/frontend-lms'
             }
         }
         stage('Remove old docker images') {
              steps {
-                 sh 'docker rmi -f yellaiahdocker/kona'
-
+                 sh 'docker rmi -f manvithgone/frontend-lms'
             }
         }
-         stage('Running on kubernetes') {
+         stage('Running the docker container') {
             steps {
-                echo 'Deploying....'
-                sh "cd webapp && kubectl apply -f deployment.yml"
-                sh "cd webapp && kubectl apply -f service.yml"
-                sh "kubectl rollout restart deployment konalms"
+                  sh 'docker container rm --force fe'
+                  sh 'docker run -dt -p 8000:80 --name fe manvithgone/frontend-lms'
             }
         }
     }
