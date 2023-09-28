@@ -1,0 +1,49 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Sonar Analysis') {
+            steps {
+                echo 'Testing..'
+                sh 'cd webapp && sudo docker run  --rm -e SONAR_HOST_URL="http://35.153.67.102:9000" -e SONAR_LOGIN="sqp_65030e28b7572f21cdeac3d0e6af2a709f2aadb4"  -v ".:/usr/src" sonarsource/sonar-scanner-cli -Dsonar.projectKey=proj1sqj'
+            }
+        }
+
+        stage('Build LMS') {
+            steps {
+                echo 'Building..'
+                sh 'cd webapp && npm install && npm run build'
+            }
+        }
+
+        stage('Release LMS') {
+            steps {
+                script {
+                    echo "Releasing.."       
+                    def packageJSON = readJSON file: 'webapp/package.json'
+                    def packageJSONVersion = packageJSON.version
+                    echo "${packageJSONVersion}"  
+                    sh "zip webapp/dist-${packageJSONVersion}.zip -r webapp/dist"
+                    sh "curl -v -u admin:admin123 --upload-file webapp/dist-${packageJSONVersion}.zip http://18.223.103.131:8081/repository/lms/"     
+            }
+            }
+        }
+
+        stage('Deploy LMS') {
+            steps {
+                script {
+                    echo "Deploying.."       
+                    def packageJSON = readJSON file: 'webapp/package.json'
+                    def packageJSONVersion = packageJSON.version
+                    echo "${packageJSONVersion}"  
+                    sh "curl -u admin:admin123 -X GET \'http://54.237.81.24:8081/repository/proj1raw/dist-${packageJSONVersion}.zip\' --output dist-'${packageJSONVersion}'.zip"
+                    sh 'sudo rm -rf /var/www/html/*'
+                    sh "sudo unzip -o dist-'${packageJSONVersion}'.zip"
+                    sh "sudo cp -r webapp/dist/* /var/www/html"
+            }
+            }
+        }
+
+
+    }
+}
